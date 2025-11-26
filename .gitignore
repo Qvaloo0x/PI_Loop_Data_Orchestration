@@ -1,0 +1,25 @@
+# --- General Operating System Files ---
+.DS_Store
+Thumbs.db
+
+# --- Python Environment Files (if you run n8n locally) ---
+__pycache__/
+*.pyc
+venv/
+.env
+
+# --- n8n Specific Files and Secrets ---
+# n8n stores credentials locally in a configuration file
+credentials.json
+n8n/
+.n8n/
+
+# --- Google Cloud & Secrets ---
+# This line is CRITICAL: it prevents uploading your Service Account Key
+*.json
+# If you used the Service Account Key file name directly:
+service-account-key.json
+
+# --- General Development Logs/Backups ---
+*.log
+*.bak
