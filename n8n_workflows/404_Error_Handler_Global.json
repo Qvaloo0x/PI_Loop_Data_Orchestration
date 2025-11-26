@@ -1,0 +1,29 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "01_Start_On_Error",
+      "type": "n8n-nodes-base.workflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 180],
+      "notesInFlow": "This workflow starts when a linked workflow fails."
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredential",
+        "channel": "[AJUSTAR_SLACK_CHANNEL_OR_EMAIL]",
+        "text": "❌ **404: CRITICAL ERROR!** The PI_Loop system failed to complete a task.\n\n- **Failed Workflow:** {{$json.workflow.name}}\n- **Failed Node:** {{$json.failedNode.name}}\n- **Error Message:** {{$json.error.message}}\n\nPlease review BigQuery queries immediately."
+      },
+      "name": "02_Slack_Error_Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [480, 180],
+      "notesInFlow": "Sends a detailed error report to the team."
+    }
+  ],
+  "connections": {
+    "01_Start_On_Error": [
+      ["02_Slack_Error_Alert", 0]
+    ]
+  }
+}

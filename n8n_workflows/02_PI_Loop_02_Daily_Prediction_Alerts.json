@@ -1,0 +1,130 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "value": 0
+            }
+          ],
+          "mode": "everyDay",
+          "hour": 9
+        }
+      },
+      "name": "01_Daily_Schedule",
+      "type": "n8n-nodes-base.schedule",
+      "typeVersion": 1,
+      "position": [240, 480]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredential",
+        "query": "[PASTE_DATA_HEALTH_CHECK_SQL_PHASE_D]",
+        "nodeSelect": "id"
+      },
+      "name": "02_BQ_Data_Health_Check",
+      "type": "n8n-nodes-base.bigQuery",
+      "typeVersion": 1,
+      "position": [440, 480],
+      "notesInFlow": "Runs SQL to check for zero rows or stale data (e.g., older than 7 days)."
+    },
+    {
+      "parameters": {
+        "value1": "={{$json.data_health_status}}",
+        "value2": "=Error",
+        "operator": "notContains"
+      },
+      "name": "03_IF_Health_OK",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [640, 480],
+      "notesInFlow": "If data is NOT OK (contains 'Error'), the workflow stops and triggers the 404 error handler."
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredential",
+        "query": "[PASTE_FULL_PREDICTION_SQL_PHASE_C]",
+        "nodeSelect": "id"
+      },
+      "name": "04_BQ_Create_Prediction_Table",
+      "type": "n8n-nodes-base.bigQuery",
+      "typeVersion": 1,
+      "position": [840, 480],
+      "notesInFlow": "Phase C: Executes ML.PREDICT only if the Data Health Check is successful."
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredential",
+        "query": "SELECT AVG(churn_probability) AS average_churn_rate FROM web3_mining_data.t_churn_predictions",
+        "nodeSelect": "id"
+      },
+      "name": "05_BQ_Calculate_Avg_Churn",
+      "type": "n8n-nodes-base.bigQuery",
+      "typeVersion": 1,
+      "position": [1040, 480]
+    },
+    {
+      "parameters": {},
+      "name": "06_Code_Extract_Value",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1240, 480],
+      "notesInFlow": "Extracts the numeric value from the BigQuery result for the IF node."
+    },
+    {
+      "parameters": {
+        "value1": "={{$json.average_churn_rate}}",
+        "value2": "0.15",
+        "operator": "larger"
+      },
+      "name": "07_IF_Alert_Needed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1440, 480]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredential",
+        "channel": "[AJUSTAR_SLACK_CHANNEL_OR_EMAIL]",
+        "text": "🚨 **CRITICAL CHURN ALERT PI_LOOP** 🚨\n\nAverage churn risk has exceeded 15%.\n\nActual average is: *{{$json.average_churn_rate | times: 100 | round(2)}}%*.\n\nAction: Retention campaign must be activated immediately.\n"
+      },
+      "name": "08_Slack_Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1640, 380]
+    },
+    {
+      "parameters": {},
+      "name": "09_NoOp_Success",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1640, 580]
+    }
+  ],
+  "connections": {
+    "01_Daily_Schedule": [
+      ["02_BQ_Data_Health_Check", 0]
+    ],
+    "02_BQ_Data_Health_Check": [
+      ["03_IF_Health_OK", 0]
+    ],
+    "03_IF_Health_OK": [
+      ["04_BQ_Create_Prediction_Table", 0]
+    ],
+    "04_BQ_Create_Prediction_Table": [
+      ["05_BQ_Calculate_Avg_Churn", 0]
+    ],
+    "05_BQ_Calculate_Avg_Churn": [
+      ["06_Code_Extract_Value", 0]
+    ],
+    "06_Code_Extract_Value": [
+      ["07_IF_Alert_Needed", 0]
+    ],
+    "07_IF_Alert_Needed": [
+      ["08_Slack_Alert", 0],
+      ["09_NoOp_Success", 0]
+    ]
+  }
+}

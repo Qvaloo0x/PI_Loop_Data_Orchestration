@@ -1,1 +1,110 @@
-
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAt": "01:00",
+              "type": "months"
+            }
+          ]
+        }
+      },
+      "name": "01_Start_Monthly",
+      "type": "n8n-nodes-base.schedule",
+      "typeVersion": 1,
+      "position": [
+        240,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "credentials",
+        "credentialId": "[ADJUST_BQ_CREDENTIAL]",
+        "operation": "executeQuery",
+        "query": "LOAD DATA OVERWRITE web3_mining_data.marketing_spend FROM FILES (format = 'CSV', uris = ['gs://[ADJUST_GCS_BUCKET]/marketing_spend.csv']);\n"
+      },
+      "name": "02_BQ_Ingest_Marketing",
+      "type": "n8n-nodes-base.bigQuery",
+      "typeVersion": 1,
+      "position": [
+        480,
+        60
+      ],
+      "notesInFlow": "Loads Marketing Spend data from GCS into BigQuery."
+    },
+    {
+      "parameters": {
+        "authentication": "credentials",
+        "credentialId": "[ADJUST_BQ_CREDENTIAL]",
+        "operation": "executeQuery",
+        "query": "LOAD DATA OVERWRITE web3_mining_data.customer_transactions FROM FILES (format = 'CSV', uris = ['gs://[ADJUST_GCS_BUCKET]/customer_transactions.csv']);\n"
+      },
+      "name": "03_BQ_Ingest_Transactions",
+      "type": "n8n-nodes-base.bigQuery",
+      "typeVersion": 1,
+      "position": [
+        480,
+        180
+      ],
+      "notesInFlow": "Loads Customer Transaction data from GCS into BigQuery."
+    },
+    {
+      "parameters": {
+        "authentication": "credentials",
+        "credentialId": "[ADJUST_BQ_CREDENTIAL]",
+        "operation": "executeQuery",
+        "query": "[PASTE_FULL_KPI_VIEW_SQL_PHASE_A]\n-- Paste the full SQL code from Phase A here (CREATE OR REPLACE VIEW...)"
+      },
+      "name": "04_BQ_Create_KPI_View",
+      "type": "n8n-nodes-base.bigQuery",
+      "typeVersion": 1,
+      "position": [
+        720,
+        180
+      ],
+      "notesInFlow": "Creates the transformed view (v_kpis_transformed) calculating LTV and Retention bases."
+    },
+    {
+      "parameters": {
+        "authentication": "credentials",
+        "credentialId": "[ADJUST_BQ_CREDENTIAL]",
+        "operation": "executeQuery",
+        "query": "[PASTE_FULL_BQML_MODEL_SQL_PHASE_B]\n-- Paste the full BQML code from Phase B here (CREATE OR REPLACE MODEL...)"
+      },
+      "name": "05_BQ_Train_Model",
+      "type": "n8n-nodes-base.bigQuery",
+      "typeVersion": 1,
+      "position": [
+        960,
+        180
+      ],
+      "notesInFlow": "Trains/Re-trains the Logistic Regression Churn Prediction Model."
+    }
+  ],
+  "connections": {
+    "01_Start_Monthly": [
+      [
+        "02_BQ_Ingest_Marketing",
+        "03_BQ_Ingest_Transactions"
+      ]
+    ],
+    "02_BQ_Ingest_Marketing": [
+      [
+        "04_BQ_Create_KPI_View"
+      ]
+    ],
+    "03_BQ_Ingest_Transactions": [
+      [
+        "04_BQ_Create_KPI_View"
+      ]
+    ],
+    "04_BQ_Create_KPI_View": [
+      [
+        "05_BQ_Train_Model"
+      ]
+    ]
+  }
+}
